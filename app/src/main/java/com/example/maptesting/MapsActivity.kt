@@ -6,15 +6,11 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.location.Geocoder
 import android.location.Location
-import android.location.LocationManager
 import android.os.Bundle
-import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.maptesting.databinding.ActivityMapsBinding
-import com.example.maptesting.google_map_util.CreateMarker
-import com.example.maptesting.google_map_util.DistanceDetermination
 import com.example.maptesting.network.Parser
 import com.example.maptesting.utils.Coroutines
 import com.example.maptesting.utils.PermissionUtils
@@ -30,41 +26,29 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     GoogleMap.OnMyLocationButtonClickListener,
     GoogleMap.OnMyLocationClickListener,
     GoogleMap.OnCameraMoveCanceledListener,
-    LocationSource.OnLocationChangedListener,
-    android.location.LocationListener  {
+    LocationSource.OnLocationChangedListener {
 
-    private lateinit var binding: ActivityMapsBinding
-
-    companion object{
-        const val LOCATION_PERMISSION_REQUEST_CODE = 999
-        const val DEFAULT_ZOOM = 15
-    }
-
-
-
-    private lateinit var mMap: GoogleMap
-    private lateinit var locationCallback: LocationCallback
-
-
-
+    val DEFAULT_ZOOM = 15
 
     val locationPermissionGranted = true
 
-    protected var locationManager: LocationManager? = null
 
+    private lateinit var original: MarkerOptions
 
-    private lateinit var locationRequest  : LocationRequest
+    private val TAG = MapsActivity::class.java.name
+
+    private  val LOCATION_PERMISSION_REQUEST_CODE = 999
+
 
     private var currentLatLng: LatLng? = null
+
     private  var DEMO_LATITUDE = 48.430644
     private  var DEMO_LONGITUDE = 151.211
-
+    private lateinit var mMap: GoogleMap
+    private lateinit var binding: ActivityMapsBinding
     private var fusedLocationProviderClient : FusedLocationProviderClient? = null
     private var currentLocation : Location? = null
     private var currentMarker : Marker? = null
-
-
-    private val TAG = MapsActivity::class.java.name
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -74,23 +58,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
         //Получить местоположение клиента
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
-
-        setUpdateGoogleMap()
-
-    }
-
-    private fun setUpdateGoogleMap(){
-        locationManager = applicationContext
-            .getSystemService(LOCATION_SERVICE) as LocationManager
-
-        //Настройки для автообновления карты
-        locationRequest  = LocationRequest.create();
-        locationRequest.setFastestInterval(1000);
-        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        //onLaunchMapPickerClicked(context = this)
 
     }
-
-
 
 
     @SuppressLint("MissingPermission")
@@ -114,6 +84,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                                 LatLng(lastKnownLocation.latitude,
                                     lastKnownLocation.longitude), DEFAULT_ZOOM.toFloat()))
 
+                            circleMap()
                         }
                     } else {
                         Log.d(TAG, "Current location is null. Using defaults.")
@@ -128,6 +99,22 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
             Log.e("Exception: %s", e.message, e)
         }
     }
+
+
+
+
+
+
+
+    /**
+     * Manipulates the map once available.
+     * This callback is triggered when the map is ready to be used.
+     * This is where we can add markers or lines, add listeners or move the camera. In this case,
+     * we just add a marker near Sydney, Australia.
+     * If Google Play services is not installed on the device, the user will be prompted to install
+     * it inside the SupportMapFragment. This method will only be triggered once the user has
+     * installed Google Play services and returned to the app.
+     */
 
     /*
     * Когда карта готова вызвается этот  метод
@@ -169,6 +156,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         mMap.setOnMarkerClickListener(object : OnMarkerClickListener {
             override fun onMarkerClick(p0: Marker): Boolean {
 
+                println("marker p0" + p0.title)
+                println("position "+ p0.position.latitude + " "+p0.position.longitude)
+                p0.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.custom_marker))
                 return true
             }
         })
@@ -176,32 +166,39 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
         getDeviceLocation()
         addNewMarker()
+    }
 
-        locationCallback = object : LocationCallback() {
-            override fun onLocationResult(p0: LocationResult) {
-                p0 ?: return
-                for (location in p0.locations){
-                    DEMO_LATITUDE = location.latitude
-                    DEMO_LONGITUDE = location.longitude
-
-                    currentMarker!!.setPosition(LatLng(location.latitude,  location.longitude))
-
-
-                    Toast.makeText(baseContext, "--- "+location.longitude, Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-
-        startLocationUpdates()
+    private fun gettingOriginalCoordinate(){
+        original = MarkerOptions().position(LatLng(DEMO_LATITUDE, DEMO_LONGITUDE))
     }
 
 
-    lateinit var markerOption : MarkerOptions
+//    private fun gettingEndCoordinate() : MarkerOptions {
+//        return MarkerOptions().position(LatLng(end_latitude, end_longitude))
+//    }
+
+    private fun setDistance(latLong: LatLng) : String{
+        val results = FloatArray(10)
+
+        Location.distanceBetween(
+            DEMO_LATITUDE,
+            DEMO_LONGITUDE,
+            latLong.latitude,
+            latLong.longitude,
+            results
+        )
+
+        return "Distance = ${String.format("%.1f", results[0] / 1000)} km"
+    }
+
+
     private fun drawMarket(latLong : LatLng){
-         markerOption = MarkerOptions().position(latLong).title("I am heare")
+        val markerOption = MarkerOptions().position(latLong).title("I am heare")
             .snippet(getAddress(DEMO_LATITUDE, DEMO_LONGITUDE)).draggable(true) //Чтобы маркер двигался
         markerOption.icon(BitmapDescriptorFactory.fromResource(R.drawable.custom_marker))
 
+        println("---------- ${markerOption.title}")
+        println("---------- ${markerOption.snippet}")
 
         mMap.animateCamera(CameraUpdateFactory.newLatLng(latLong))
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLong, 75f))
@@ -216,8 +213,23 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
         getLocation()
 
+
     }
 
+
+    //Рисую радиус круга
+    private fun circleMap(){
+       mMap.addCircle(
+            CircleOptions()
+                .center(LatLng(DEMO_LATITUDE, DEMO_LONGITUDE))
+                .radius(500.0)
+                .fillColor(Color.parseColor("#9cc0f94d"))
+                .strokeWidth(0f)
+                .zIndex(0.2f)
+        )
+
+
+    }
 
     private fun getAddress(lat : Double, lon : Double) : String?{
         val local = Locale("uk_UA") // Список доступных городов https://stackoverflow.com/a/7989085/5722608
@@ -253,6 +265,59 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
     //Определение ближайшего объекста
     private fun getLocation(){
+
+
+        val sydney = LatLng(48.428694, 35.018050)
+        val sydney2 = LatLng(48.4329635, 35.0193128)
+        val sydney3 = LatLng( 48.446958, 35.000468)
+
+        val sydney4 = LatLng( 48.4329149,35.0214726)
+        val sydney5 = LatLng(48.4326938,35.0257699)
+        val sydney6 = LatLng(48.4329985,35.0043483)
+
+        val target1 = Location("target")
+        target1.setLatitude(sydney.latitude)
+        target1.setLongitude(sydney.longitude)
+
+        val target2 = Location("target")
+        target2.setLatitude(sydney2.latitude)
+        target2.setLongitude(sydney2.longitude)
+
+        val target3 = Location("target")
+        target3.setLatitude(sydney3.latitude)
+        target3.setLongitude(sydney3.longitude)
+
+        val target4 = Location("target")
+        target4.setLatitude(sydney4.latitude)
+        target4.setLongitude(sydney4.longitude)
+
+        val target5 = Location("target")
+        target5.setLatitude(sydney4.latitude)
+        target5.setLongitude(sydney4.longitude)
+
+        val target6 = Location("target")
+        target6.setLatitude(sydney5.latitude)
+        target6.setLongitude(sydney5.longitude)
+
+        val target7 = Location("target")
+        target7.setLatitude(sydney6.latitude)
+        target7.setLongitude(sydney6.longitude)
+
+        println("-------- ${currentLocation?.distanceTo(target1)!! < 100F}")
+//        Toast.makeText(this, " 1-------- ${currentLocation?.distanceTo(target1)!! < 100F}", Toast.LENGTH_SHORT).show()
+//        Toast.makeText(this, " 2 -------- ${currentLocation?.distanceTo(target2)!! < 300F}", Toast.LENGTH_SHORT).show()
+//        Toast.makeText(this, " 3 -------- ${currentLocation?.distanceTo(target3)!! < 500F}", Toast.LENGTH_SHORT).show()
+//        Toast.makeText(this, " 4 -------- ${currentLocation?.distanceTo(target4)!! < 700F}", Toast.LENGTH_SHORT).show()
+//        Toast.makeText(this, " 4,1000 -------- ${currentLocation?.distanceTo(target4)!! < 1000F}", Toast.LENGTH_SHORT).show()
+//        Toast.makeText(this, " 4,100 -------- ${currentLocation?.distanceTo(target4)!! < 100F}", Toast.LENGTH_SHORT).show()
+
+        Toast.makeText(this, " 5, остановка -------- ${currentLocation?.distanceTo(target4)!! < 200F}", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, " 6, Апполо -------- ${currentLocation?.distanceTo(target4)!! < 200F}", Toast.LENGTH_SHORT).show()
+
+        println(currentLocation?.distanceTo(target1)!!) // парк //718.63293
+        println(currentLocation?.distanceTo(target2)!!) // Стадион // 472.52606
+        println(currentLocation?.distanceTo(target3)!!) // Раблчая // 2449.3254
+        println(currentLocation?.distanceTo(target4)!!) // 312.72922
 
         val parser = Parser()
         Coroutines.ioThenMain({
@@ -317,6 +382,30 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
             .tilt(90f)
             .zoom(mMap.getCameraPosition().zoom)
             .build()
+
+//
+//        mMap.animateCamera(
+//            CameraUpdateFactory.newCameraPosition(cameraPosition),
+//            ANIMATE_SPEEED_TURN,
+//            object : CancelableCallback {
+//                override fun onFinish() {
+//                    if (++currentPt < markers.size()) {
+//                        val cameraPosition = CameraPosition.Builder()
+//                            .target(targetLatLng)
+//                            .tilt(if (currentPt < markers.size() - 1) 90 else 0.toFloat()) //.bearing((float)heading)
+//                            .zoom(mMap.getCameraPosition().zoom)
+//                            .build()
+//                        mMap.animateCamera(
+//                            CameraUpdateFactory.newCameraPosition(cameraPosition),
+//                            3000,
+//                            simpleAnimationCancelableCallback
+//                        )
+//                        highLightMarker(currentPt)
+//                    }
+//                }
+//                override fun onCancel() {}
+//            }
+//        )
     }
 
     override fun onMyLocationClick(location: Location) {
@@ -332,25 +421,54 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         return false
     }
 
-    private  lateinit var stadion : Marker
     private fun addNewMarker(){
+        val sydney = LatLng(48.428694, 35.018050)
+        val sydney2 = LatLng(48.4329635, 35.0193128)
+        val sydney3 = LatLng( 48.446958, 35.000468)
+        val sydney5 = LatLng(48.4281306,35.0216886)
 
-        val arr = arrayListOf(LatLng(48.428694, 35.018050),
-            LatLng(48.4329635, 35.0193128),
-            LatLng( 48.446958, 35.000468),
-            LatLng(48.4281306,35.0216886),
-            LatLng(48.4280261,35.016418)
+        val sydney6 = LatLng(48.4280261,35.016418)
+
+        mMap.addMarker(
+            MarkerOptions()
+                .position(sydney)
+                .title("Парк")
+                .snippet(setDistance(sydney))
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_car))
         )
 
+        mMap.addMarker(
+            MarkerOptions()
+                .position(sydney2)
+                .snippet(setDistance(sydney2))
+                .title("Стадион")
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_car))
+        )
 
-        arr.forEach{
-            mMap.addMarker(
-                MarkerOptions()
-                    .position(it)
-                    .title("11212")
-                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_car))
-            )
-        }
+        mMap.addMarker(
+            MarkerOptions()
+                .position(sydney3)
+                .snippet(setDistance(sydney3))
+                .title("Рабочая")
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_car))
+        )
+
+        mMap.addMarker(
+            MarkerOptions()
+                .position(sydney5)
+                .snippet(setDistance(sydney5))
+                .title("Остановка")
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_car))
+        )
+
+        mMap.addMarker(
+            MarkerOptions()
+                .position(sydney6)
+                .snippet(setDistance(sydney6))
+                .title("Аполло")
+                .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_car))
+        )
+
 
     }
 
@@ -366,16 +484,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         Toast.makeText(this, TAG + "Place: " + place.name + ", " + place.id + ", " + place.latLng, Toast.LENGTH_SHORT).show()
 
     }
-    @SuppressLint("MissingPermission")
-    private fun startLocationUpdates() {
-        fusedLocationProviderClient!!.requestLocationUpdates(locationRequest,
-            locationCallback,
-            Looper.getMainLooper())
-    }
-
-
-
-
 
     /*
     * Вызывается, когда известно новое местоположение пользователя.
