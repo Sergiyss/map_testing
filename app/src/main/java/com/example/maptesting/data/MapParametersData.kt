@@ -1,7 +1,9 @@
 package com.example.maptesting.data
 
+import com.google.android.gms.maps.model.LatLng
 
-    class MapData {
+
+class MapData {
         var routes = ArrayList<Routes>()
     }
 
@@ -48,5 +50,13 @@ package com.example.maptesting.data
     class Location{
         var lat =""
         var lng =""
+    }
+
+    //Data class for car markers
+    class CarMarker{
+        var latLng = LatLng(0.0, 0.0)
+        var title = ""
+        var snippet = ""
+        var icon = 0
     }
 

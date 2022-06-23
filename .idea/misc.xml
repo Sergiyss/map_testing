@@ -3,6 +3,11 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
+        <entry key="..\:/Users/Kikka/AppData/Local/Android/Sdk/platforms/android-32/data/res/layout/activity_list_item.xml" value="0.18802083333333333" />
+        <entry key="..\:/Users/Kikka/AppData/Local/Android/Sdk/platforms/android-32/data/res/layout/test_list_item.xml" value="0.18802083333333333" />
+        <entry key="..\:/Users/Kikka/Desktop/map_testing/app/src/main/res/layout/activity_maps.xml" value="0.18802083333333333" />
+        <entry key="..\:/Users/Kikka/Desktop/map_testing/app/src/main/res/layout/car_tooltip.xml" value="0.18697916666666667" />
+        <entry key="..\:/Users/Kikka/Desktop/map_testing/app/src/main/res/layout/test.xml" value="0.18802083333333333" />
         <entry key="..\:/Users/user/AndroidStudioProjects/maptesting/app/src/main/res/drawable/test.xml" value="0.25" />
         <entry key="..\:/Users/user/AndroidStudioProjects/maptesting/app/src/main/res/layout/activity_maps.xml" value="0.1388888888888889" />
         <entry key="..\:/Users/user/AndroidStudioProjects/maptesting/app/src/main/res/layout/test.xml" value="0.21965579710144928" />
