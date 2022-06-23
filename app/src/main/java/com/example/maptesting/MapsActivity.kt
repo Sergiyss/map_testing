@@ -19,6 +19,7 @@ import com.google.android.gms.maps.*
 import com.google.android.gms.maps.GoogleMap.OnMarkerClickListener
 import com.google.android.gms.maps.model.*
 import com.google.android.libraries.places.widget.Autocomplete
+import settings.LocaleSettings
 import java.util.*
 
 
@@ -50,6 +51,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     private var currentLocation : Location? = null
     private var currentMarker : Marker? = null
 
+    private lateinit var loc: String
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -60,6 +63,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
         //onLaunchMapPickerClicked(context = this)
 
+        //Get locale
+        loc = LocaleSettings(this).getLocale()
     }
 
 
@@ -232,7 +237,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     }
 
     private fun getAddress(lat : Double, lon : Double) : String?{
-        val local = Locale("uk_UA") // Список доступных городов https://stackoverflow.com/a/7989085/5722608
+        val local = Locale(loc) // Список доступных городов https://stackoverflow.com/a/7989085/5722608
         val geoCoder = Geocoder(this, local)
         val addressess = geoCoder.getFromLocation(lat, lon, 1)
         return addressess[0].getAddressLine(0)

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">map testing</string>
+    <string name="title_activity_maps">MapsActivity</string>
+    <string name="enable_gps">Включить GPS</string>
+    <string name="required_for_this_app">Требуется для этого приложения</string>
+    <string name="enable_now">Включить сейчас</string>
+    <string name="location_permission_not_granted">Разрешение на размещение не предоставлено</string>
+    <string name="current_location">Текущее местоположение</string>
+    <string name="where_to">Куда?</string>
+    <string name="pickup_location">Выберите место</string>
+    <string name="google_key">AIzaSyDw6XisD9272BBEFergQ8SCqxxr-XkYWLE</string>
+</resources>
