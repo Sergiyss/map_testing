@@ -12,6 +12,7 @@ import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.example.maptesting.data.CarMarker
 import com.example.maptesting.databinding.ActivityMapsBinding
 import com.example.maptesting.google_map_util.CreateMarker
 import com.example.maptesting.google_map_util.DistanceDetermination
@@ -25,6 +26,7 @@ import com.google.android.gms.maps.GoogleMap.OnMarkerClickListener
 import com.google.android.gms.maps.model.*
 import com.google.android.libraries.places.widget.Autocomplete
 import java.util.*
+import kotlin.random.Random
 
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
@@ -164,6 +166,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         mMap?.setOnMarkerClickListener(object : OnMarkerClickListener {
             override fun onMarkerClick(p0: Marker): Boolean {
 
+                Log.i("click", "id - ${p0.id}, title - ${p0.title}, snippet - ${p0.snippet}, position - ${p0.position}")
                 println("marker "+p0.position)
                 return true
             }
@@ -336,25 +339,42 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         return false
     }
 
-    private fun addNewMarker(){
+    private fun setDistance(latLong: LatLng) : String{
+        val results = FloatArray(10)
 
-        val arr = arrayListOf(LatLng(48.428694, 35.018050),
-            LatLng(48.4329635, 35.0193128),
-            LatLng( 48.446958, 35.000468),
-            LatLng(48.4281306,35.0216886),
-            LatLng(48.4280261,35.016418)
+        Location.distanceBetween(
+            DEMO_LATITUDE,
+            DEMO_LONGITUDE,
+            latLong.latitude,
+            latLong.longitude,
+            results
         )
 
+        return "Distance = ${String.format("%.1f", results[0] / 1000)} km"
+    }
 
-        arr.forEach{
-            mMap?.addMarker(
-                MarkerOptions()
-                    .position(it)
-                    .title("11212")
-                    .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_car))
-            )
+    private fun addNewMarker(){
+        val list = List(5){
+            CarMarker()
         }
 
+        for(i in 0..4){
+            list[i].latLng = LatLng(Random.nextDouble(48.4280261,48.446958), Random.nextDouble(35.000468, 35.0216886))
+            list[i].title = "car$i"
+            list[i].snippet = setDistance(list[i].latLng)
+            list[i].icon = R.drawable.ic_car
+        }
+
+        list.forEach {
+            Log.i("car", "${it.title} ${it.latLng} ${it.snippet}")
+            mMap?.addMarker(
+                MarkerOptions()
+                    .position(it.latLng)
+                    .title(it.title)
+                    .snippet(it.snippet)
+                    .icon(BitmapDescriptorFactory.fromResource(it.icon))
+            )
+        }
     }
 
     override fun onCameraMoveCanceled() {
