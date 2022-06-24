@@ -53,10 +53,14 @@ class MapData {
     }
 
     //Data class for car markers
-    class CarMarker{
-        var latLng = LatLng(0.0, 0.0)
-        var title = ""
-        var snippet = ""
-        var icon = 0
-    }
+    data class CarMarker(val latLng : LatLng,
+                         val title : String,
+                         val snippet : String,
+                         val icon : Int)
+//    class CarMarker{
+//        var latLng = LatLng(0.0, 0.0)
+//        var title = ""
+//        var snippet = ""
+//        var icon = 0
+//    }
 

@@ -26,6 +26,7 @@ import com.google.android.gms.maps.GoogleMap.OnMarkerClickListener
 import com.google.android.gms.maps.model.*
 import com.google.android.libraries.places.widget.Autocomplete
 import java.util.*
+import kotlin.collections.ArrayList
 import kotlin.random.Random
 
 
@@ -353,19 +354,32 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         return "Distance = ${String.format("%.1f", results[0] / 1000)} km"
     }
 
-    private fun addNewMarker(){
-        val list = List(5){
-            CarMarker()
-        }
+    private fun createMarker() : ArrayList<CarMarker> {
+        val carMarker = arrayListOf<CarMarker>()
 
-        for(i in 0..4){
-            list[i].latLng = LatLng(Random.nextDouble(48.4280261,48.446958), Random.nextDouble(35.000468, 35.0216886))
-            list[i].title = "car$i"
-            list[i].snippet = setDistance(list[i].latLng)
-            list[i].icon = R.drawable.ic_car
-        }
+        for (i in 0..4) {
 
-        list.forEach {
+            val latLngRnd = LatLng(
+                Random.nextDouble(48.4280261, 48.446958),
+                Random.nextDouble(35.000468, 35.0216886)
+            )
+
+            carMarker.add(
+                CarMarker(
+                    latLngRnd,
+                    "car$i",
+                    setDistance(latLngRnd),
+                    R.drawable.ic_car
+                )
+
+            )
+        }
+        return carMarker
+    }
+
+    private fun addNewMarker() {
+
+        createMarker().forEach {
             Log.i("car", "${it.title} ${it.latLng} ${it.snippet}")
             mMap?.addMarker(
                 MarkerOptions()
