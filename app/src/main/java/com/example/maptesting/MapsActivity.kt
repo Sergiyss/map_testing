@@ -15,6 +15,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.maptesting.databinding.ActivityMapsBinding
 import com.example.maptesting.google_map_util.CreateMarker
 import com.example.maptesting.google_map_util.DistanceDetermination
+import com.example.maptesting.google_map_util.MapAnimator
 import com.example.maptesting.network.Parser
 import com.example.maptesting.utils.Coroutines
 import com.example.maptesting.utils.PermissionUtils
@@ -256,7 +257,15 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
             parser.doInBackground(parser.getDirectionUrl(LatLng(48.4316353,35.0268223),
                 LatLng(48.4429017,34.9974127))!!)
         }){
-            mMap?.addPolyline(parser.onPostExecute(it!!))
+            it?.forEach {
+                println("----")
+                if(mMap != null) {
+                    MapAnimator.instance?.animateRoute(mMap!!, it);
+                }
+                println(it)
+                println("----")
+            }
+            //mMap?.addPolyline(parser.onPostExecute(it!!))
         }
 
     }
