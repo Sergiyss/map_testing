@@ -57,10 +57,4 @@ class MapData {
                          val title : String,
                          val snippet : String,
                          val icon : Int)
-//    class CarMarker{
-//        var latLng = LatLng(0.0, 0.0)
-//        var title = ""
-//        var snippet = ""
-//        var icon = 0
-//    }
 

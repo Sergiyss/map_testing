@@ -23,9 +23,6 @@ class Parser {
 
         val mode = "mode=drver"
 
-        val parameters = "$str_original&$str_dest&$mode"
-
-        val output = "json"
 
         val a = "https://maps.googleapis.com/maps/api/directions/json?origin=${original.latitude},${original.longitude}" +
                 "&destination=${dest.latitude},${dest.longitude}" +

@@ -8,6 +8,7 @@
     <fragment
         android:id="@+id/map"
         android:name="com.google.android.gms.maps.SupportMapFragment"
+        tools:context=".MapsActivity"
         android:layout_width="0dp"
         android:layout_height="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -74,12 +75,12 @@
             android:layout_height="9dp"
             android:layout_marginStart="16dp"
             android:background="@android:color/black"
-            app:layout_constraintBottom_toBottomOf="@+id/dropTextView"
+            app:layout_constraintBottom_toBottomOf="@+id/autoCompleteEditText"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/dropTextView" />
+            app:layout_constraintTop_toTopOf="@+id/autoCompleteEditText" />
 
-        <androidx.appcompat.widget.AppCompatTextView
-            android:id="@+id/dropTextView"
+        <androidx.appcompat.widget.AppCompatAutoCompleteTextView
+            android:id="@+id/autoCompleteEditText"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
@@ -101,6 +102,16 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toEndOf="@+id/dropIndicator"
             app:layout_constraintTop_toBottomOf="@+id/pickUpTextView" />
+
+        <include
+            layout="@layout/autocomplete_gmaps_fragment"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginStart="32dp"
+            android:layout_marginEnd="9dp"
+            app:layout_constraintEnd_toStartOf="@+id/autoCompleteEditText"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/autoCompleteEditText" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

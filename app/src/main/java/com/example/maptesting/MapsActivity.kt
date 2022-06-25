@@ -10,13 +10,19 @@ import android.location.LocationManager
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
+import android.widget.AdapterView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.AppCompatAutoCompleteTextView
+import androidx.appcompat.widget.AppCompatTextView
+import com.example.maptesting.adapters.PlaceArrayAdapter
 import com.example.maptesting.data.CarMarker
+import com.example.maptesting.data.PlaceDataModel
 import com.example.maptesting.databinding.ActivityMapsBinding
 import com.example.maptesting.google_map_util.CreateMarker
 import com.example.maptesting.google_map_util.DistanceDetermination
 import com.example.maptesting.google_map_util.MapAnimator
+import com.example.maptesting.google_map_util.getLocationFromAddress
 import com.example.maptesting.network.Parser
 import com.example.maptesting.utils.Coroutines
 import com.example.maptesting.utils.PermissionUtils
@@ -24,6 +30,8 @@ import com.google.android.gms.location.*
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.GoogleMap.OnMarkerClickListener
 import com.google.android.gms.maps.model.*
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.net.PlacesClient
 import com.google.android.libraries.places.widget.Autocomplete
 import java.util.*
 import kotlin.collections.ArrayList
@@ -53,6 +61,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     private var currentLatLng: LatLng? = null
     private var mMap: GoogleMap? = null
 
+    /* Делаем поиск */
+    private var placeAdapter: PlaceArrayAdapter? = null
+    private lateinit var mPlacesClient: PlacesClient
+    private lateinit var autoCompleteEditText : AppCompatAutoCompleteTextView
+    /****/
+
+
+    private var picTextView : AppCompatTextView? = null
 
     private lateinit var locationCallback: LocationCallback
 
@@ -65,8 +81,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
     private lateinit var locationRequest  : LocationRequest
 
-    private  var DEMO_LATITUDE = 48.430644
-    private  var DEMO_LONGITUDE = 151.211
+    private  var LATITUDE = 0.0
+    private  var LONGITUDE = 0.0
 
 
 
@@ -78,10 +94,44 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         binding = ActivityMapsBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        picTextView = binding.pickUpTextView
+        autoCompleteEditText = binding.autoCompleteEditText
+
+
+        Places.initialize(this, getString(R.string.google_key))
+        mPlacesClient = Places.createClient(this)
+
+
+        placeAdapter = PlaceArrayAdapter(this, R.layout.layout_item_places, mPlacesClient)
+        autoCompleteEditText.setAdapter(placeAdapter)
+
+        autoCompleteEditText.onItemClickListener = AdapterView.OnItemClickListener { parent, _, position, _ ->
+            val place = parent.getItemAtPosition(position) as PlaceDataModel
+            autoCompleteEditText.apply {
+                println(getLocationFromAddress(this@MapsActivity, place.fullText))
+                setText(place.fullText.split(",")[0])
+                setSelection(autoCompleteEditText.length())
+
+                val lanlon = getLocationFromAddress(this@MapsActivity, place.fullText)
+
+                getLocation(
+                    LatLng(currentLocation!!.latitude, currentLocation!!.longitude),
+                    LatLng(lanlon!!.latitude, lanlon!!.longitude)
+                )
+                mMap?.addMarker(
+                    MarkerOptions()
+                        .position(lanlon)
+                        .title(place.fullText)
+                )
+
+            }
+        }
+
+
         //Получить местоположение клиента
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
 
-        setUpdateGoogleMap()
+        //setUpdateGoogleMap()
 
     }
 
@@ -135,8 +185,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         mMap = googleMap
 
         mMap?.isMyLocationEnabled = true
-        mMap?.setOnMyLocationButtonClickListener(this)
-        mMap?.setOnMyLocationClickListener(this)
+        mMap!!.setOnMyLocationButtonClickListener(this)
+        mMap!!.setOnMyLocationClickListener(this)
 
 
         val latLong = LatLng(currentLocation?.latitude!!, currentLocation?.longitude!!)
@@ -150,7 +200,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
             //Перерисовать маркер
             override fun onMarkerDragEnd(p0: Marker) {
                 if (currentMarker != null){
-                   currentMarker?.remove()
+                    currentMarker?.remove()
                 }
                 val newLating = LatLng(p0.position.latitude, p0.position.longitude)
                 drawMarket(newLating)
@@ -167,58 +217,64 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         mMap?.setOnMarkerClickListener(object : OnMarkerClickListener {
             override fun onMarkerClick(p0: Marker): Boolean {
 
-                Log.i("click", "id - ${p0.id}, title - ${p0.title}, snippet - ${p0.snippet}, position - ${p0.position}")
-                println("marker "+p0.position)
+                println("marker p0" + p0.title)
+                println("position "+ p0.position.latitude + " "+p0.position.longitude)
+                p0.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.custom_marker))
                 return true
             }
         })
-        
 
-        if (mMap != null){
-            getDeviceLocation()
-        }
+
+        getDeviceLocation()
+
         addNewMarker()
-
-        locationCallback = object : LocationCallback() {
-            override fun onLocationResult(p0: LocationResult) {
-                p0 ?: return
-                for (location in p0.locations){
-                    DEMO_LATITUDE = location.latitude
-                    DEMO_LONGITUDE = location.longitude
-
-                    currentMarker!!.setPosition(LatLng(location.latitude,  location.longitude))
-
-
-                    Toast.makeText(baseContext, "--- "+location.longitude, Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-
-        startLocationUpdates()
     }
 
 
-    lateinit var markerOption : MarkerOptions
+
     private fun drawMarket(latLong : LatLng){
-         markerOption = MarkerOptions().position(latLong).title("I am heare")
-            .snippet(getAddress(DEMO_LATITUDE, DEMO_LONGITUDE)).draggable(true) //Чтобы маркер двигался
+        val markerOption = MarkerOptions().position(latLong).title("I am heare")
+            .snippet(getAddress(latLong.latitude, latLong.longitude)).draggable(true) //Чтобы маркер двигался
         markerOption.icon(BitmapDescriptorFactory.fromResource(R.drawable.custom_marker))
+
+        picTextView?.text = getAddress(latLong.latitude, latLong.longitude)
 
 
         mMap?.animateCamera(CameraUpdateFactory.newLatLng(latLong))
-        mMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLong, 75f))
-        currentMarker = mMap?.addMarker(markerOption)
-
         mMap?.uiSettings!!.isMapToolbarEnabled = false
         mMap?.setOnMyLocationButtonClickListener(this)
         mMap?.setOnMyLocationClickListener(this)
 
-
+        mMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLong, 15f))
+        currentMarker = mMap?.addMarker(markerOption)
         currentMarker?.showInfoWindow()
 
-        getLocation()
-
     }
+
+
+//    lateinit var markerOption : MarkerOptions
+//    private fun drawMarket(latLong : LatLng){
+//
+//        markerOption = MarkerOptions().position(latLong).title("I am heare")
+//            .snippet(getAddress(DEMO_LATITUDE, DEMO_LONGITUDE)).draggable(true) //Чтобы маркер двигался
+//
+//        markerOption.icon(BitmapDescriptorFactory.fromResource(R.drawable.custom_marker))
+//
+//
+//        mMap?.animateCamera(CameraUpdateFactory.newLatLng(latLong))
+//        mMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLong, 15f))
+//        currentMarker = mMap?.addMarker(markerOption)
+//
+//        mMap?.uiSettings!!.isMapToolbarEnabled = false
+//        mMap?.setOnMyLocationButtonClickListener(this)
+//        mMap?.setOnMyLocationClickListener(this)
+//
+//
+//        currentMarker?.showInfoWindow()
+//
+//        getLocation()
+//
+//    }
 
 
     private fun getAddress(lat : Double, lon : Double) : String?{
@@ -239,8 +295,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                     val mapFragment = supportFragmentManager
                         .findFragmentById(R.id.map) as SupportMapFragment
                     mapFragment.getMapAsync(this)
-
-                    getLocation()
                 }
             }
 
@@ -250,16 +304,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
     }
 
-
-
-
     //Определение ближайшего объекста
-    private fun getLocation(){
+    private fun getLocation(start : LatLng, end : LatLng){
 
         val parser = Parser()
         Coroutines.ioThenMain({
-            parser.doInBackground(parser.getDirectionUrl(LatLng(48.4316353,35.0268223),
-                LatLng(48.4429017,34.9974127))!!)
+            parser.doInBackground(parser.getDirectionUrl(start,
+                end)!!)
         }){
             it?.forEach {
                 println("----")
@@ -273,12 +324,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         }
 
     }
-
-
-
-
-
-
 
     override fun onStart() {
         super.onStart()
@@ -319,14 +364,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
     }
 
-    fun newCamera(){
-        val cameraPosition = CameraPosition.Builder()
-            .target(LatLng(0.0, 0.0))
-            .bearing(45f)
-            .tilt(90f)
-            .zoom(mMap?.getCameraPosition()!!.zoom)
-            .build()
-    }
 
     override fun onMyLocationClick(location: Location) {
         Toast.makeText(this, "Current location:\n$location", Toast.LENGTH_LONG)
@@ -344,8 +381,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         val results = FloatArray(10)
 
         Location.distanceBetween(
-            DEMO_LATITUDE,
-            DEMO_LONGITUDE,
+            LATITUDE,
+            LONGITUDE,
             latLong.latitude,
             latLong.longitude,
             results
