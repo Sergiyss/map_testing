@@ -3,6 +3,9 @@ package com.example.maptesting
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
+
+import android.icu.text.CaseMap
+
 import android.location.Geocoder
 import android.location.Location
 import android.location.LocationManager
@@ -12,14 +15,26 @@ import android.util.Log
 import android.widget.AdapterView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.ViewModelProvider
+
 import androidx.appcompat.widget.AppCompatAutoCompleteTextView
 import androidx.appcompat.widget.AppCompatTextView
 import com.example.maptesting.adapters.PlaceArrayAdapter
+
 import com.example.maptesting.data.CarMarker
 import com.example.maptesting.data.PlaceDataModel
 import com.example.maptesting.databinding.ActivityMapsBinding
+
+import com.example.maptesting.google_map_util.MapAnimator
+import com.example.maptesting.network.Parser
+import com.example.maptesting.room_database.Car
+import com.example.maptesting.room_database.DBViewModel
+
 import com.example.maptesting.google_map_util.*
 import com.example.maptesting.retrofit.ApiClient
+
 import com.example.maptesting.utils.Coroutines
 import com.example.maptesting.utils.PermissionUtils
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -92,6 +107,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
     private val TAG = MapsActivity::class.java.name
 
+    //ViewModel for cars
+    private lateinit var carViewModel: DBViewModel
+    private var car = Car()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -146,7 +165,38 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         //Получить местоположение клиента
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
 
+
+        setUpdateGoogleMap()
+
+        //init db
+        initDB()
+
+    }
+
+    //Инициализаяй БД
+    private fun initDB(){
+        carViewModel = ViewModelProvider(this)[DBViewModel::class.java]
+        //В тесте пока будут удаляться все данные сразу
+        carViewModel.deleteAllCars()
+    }
+
+    //Получение всех данных из БД
+    private fun getAllCars(){
+        carViewModel.getAllCars.observe(this){
+            it.forEach { car ->
+                Log.i("cars", car.title)
+            }
+        }
+    }
+
+    //Получение одного поля из БД
+    private fun getCar(title: String){
+        carViewModel.getCarByTitle(title).observe(this){
+            car = it ?: Car()
+        }
+
         //setUpdateGoogleMap()
+
     }
 
     private fun setUpdateGoogleMap(){
@@ -231,9 +281,27 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         mMap?.setOnMarkerClickListener(object : OnMarkerClickListener {
             override fun onMarkerClick(p0: Marker): Boolean {
 
+
+                //добавление в бд и вывод из бд
+                getAllCars()
+                if(car.title != "" && car.title == p0.title) {
+                    getCar(p0.title.toString())
+                    Log.i("car", "Title - ${car.title}, snippet - ${car.snippet}")
+                }
+                else {
+                    car.title = p0.title.toString()
+                    car.snippet = p0.snippet.toString()
+                    carViewModel.addCar(car)
+                    Log.i("car", "Added successfully")
+                }
+
+                Log.i("click", "id - ${p0.id}, title - ${p0.title}, snippet - ${p0.snippet}, position - ${p0.position}")
+                println("marker "+p0.position)
+
                 println("marker p0" + p0.title)
                 println("position "+ p0.position.latitude + " "+p0.position.longitude)
                 p0.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.custom_marker))
+
                 return true
             }
         })
