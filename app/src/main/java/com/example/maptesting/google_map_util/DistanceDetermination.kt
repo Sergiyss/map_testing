@@ -5,7 +5,7 @@ import com.google.android.gms.maps.model.LatLng
 
 class DistanceDetermination {
 
-    fun getDistanceInKilometers(startlatLong: LatLng, endlatLong: LatLng) : String{
+    fun getDistanceInKilometers(startlatLong: LatLng, endlatLong: LatLng) : Float{
         val results = FloatArray(10)
 
         Location.distanceBetween(
@@ -16,7 +16,7 @@ class DistanceDetermination {
             results
         )
 
-        return String.format("%.1f", results[0] / 1000)
+        return results[0]
     }
 
 }
