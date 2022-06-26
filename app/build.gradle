@@ -67,7 +67,7 @@ dependencies {
 
     implementation 'com.github.mancj:MaterialSearchBar:0.8.5' //
 
-    
+
     // OK HTTP
     implementation "com.squareup.okhttp3:okhttp:$okhttp_version"
     // Retrofit

@@ -1,10 +1,7 @@
 package com.example.maptesting.google_map_util
 
 import android.animation.*
-import com.google.android.gms.maps.model.Polyline
-import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.model.LatLng
 import com.example.maptesting.google_map_util.MapAnimator
 import android.animation.ValueAnimator.AnimatorUpdateListener
 import android.view.animation.AccelerateInterpolator
@@ -12,6 +9,8 @@ import android.graphics.Color
 import com.example.maptesting.google_map_util.RouteEvaluator
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.DecelerateInterpolator
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.*
 
 /**
  * Created by amal.chandran on 22/12/16.
@@ -132,6 +131,43 @@ class MapAnimator {
         foregroundPoints.add(endLatLng)
         foregroundPolyline!!.points = foregroundPoints
     }
+
+
+
+    fun animateMarker(mMap : GoogleMap,
+                      position : Int,
+                      allPaths : List<LatLng>,
+                      durationMs : Int,
+                      marker : Marker) : GoogleMap.CancelableCallback{
+
+        var currentPt = position
+
+        val simpleAnimationCancelableCallback: GoogleMap.CancelableCallback = object :
+            GoogleMap.CancelableCallback {
+            override fun onCancel() {}
+            override fun onFinish() {
+                if (++currentPt < allPaths.size) {
+
+                    val cameraPosition = CameraPosition.Builder()
+                        .target(allPaths.get(currentPt))
+                        .tilt(if (currentPt < allPaths.size - 1) 90f else 0f) //.bearing((float)heading)
+                        .zoom(mMap.getCameraPosition().zoom)
+                        .build()
+                    mMap.animateCamera(
+                        CameraUpdateFactory.newCameraPosition(cameraPosition),
+                        durationMs,
+                        this
+                    )
+
+                    marker.position = LatLng(cameraPosition.target.latitude, cameraPosition.target.longitude)
+                }
+            }
+        }
+
+        return simpleAnimationCancelableCallback
+    }
+
+
 
     companion object {
         private var mapAnimator: MapAnimator? = null

@@ -1,9 +1,17 @@
 package com.example.maptesting.google_map_util
 
 import android.content.Context
+import android.graphics.Point
 import android.location.Address
 import android.location.Geocoder
+import android.os.Handler
+import android.os.SystemClock
+import android.view.animation.BounceInterpolator
+import android.view.animation.Interpolator
+import com.example.maptesting.utils.Coroutines
+import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.tasks.Tasks
 import com.google.android.libraries.places.api.model.AutocompletePrediction
 import com.google.android.libraries.places.api.model.AutocompleteSessionToken
@@ -219,4 +227,66 @@ fun getLocationFromAddress(context: Context?, strAddress: String?): LatLng? {
         ex.printStackTrace()
     }
     return p1
+}
+
+
+fun decodePolyline(encoded: String): List<LatLng> {
+    val poly = ArrayList<LatLng>()
+    var index = 0
+    val len = encoded.length
+    var lat = 0
+    var lng = 0
+    while (index < len) {
+        var b: Int
+        var shift = 0
+        var result = 0
+        do {
+            b = encoded[index++].code - 63
+            result = result or (b and 0x1f shl shift)
+            shift += 5
+        } while (b >= 0x20)
+        val dlat = if (result and 1 != 0) (result shr 1).inv() else result shr 1
+        lat += dlat
+        shift = 0
+        result = 0
+        do {
+            b = encoded[index++].code - 63
+            result = result or (b and 0x1f shl shift)
+            shift += 5
+        } while (b >= 0x20)
+        val dlng = if (result and 1 != 0) (result shr 1).inv() else result shr 1
+        lng += dlng
+        val latLng = LatLng((lat.toDouble() / 1E5),(lng.toDouble() / 1E5))
+        poly.add(latLng)
+    }
+    return poly
+}
+
+
+fun bounceMarker(googleMap: GoogleMap, marker: Marker) {
+    //Make the marker bounce
+    val startTime = SystemClock.uptimeMillis()
+    val duration: Long = 2000
+    val proj = googleMap.projection
+    val markerLatLng = marker.position
+    val startPoint: Point = proj.toScreenLocation(markerLatLng)
+    startPoint.offset(0, -100)
+    val startLatLng = proj.fromScreenLocation(startPoint)
+    val interpolator: Interpolator = BounceInterpolator()
+
+    Coroutines.ioThenMain({
+        SystemClock.uptimeMillis() - startTime
+    }){
+        val t: Float = interpolator.getInterpolation(it!!.toFloat() / duration)
+        val lng = t * markerLatLng.longitude + (1 - t) * startLatLng.longitude
+        val lat = t * markerLatLng.latitude + (1 - t) * startLatLng.latitude
+
+        marker.setPosition( LatLng(lat, lng))
+
+        println("bounceMarker "+ LatLng(lat, lng))
+    }
+
+
+
+
 }
