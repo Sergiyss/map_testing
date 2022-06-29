@@ -2,6 +2,8 @@ package com.example.maptesting
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.animation.Animation
+import android.view.animation.AnimationUtils
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -11,6 +13,7 @@ import com.example.maptesting.adapters.StartingWindowAdapter
 import com.example.maptesting.utils.AnimatooStartingWindow
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
+
 
 class StartingWindowsActivity : AppCompatActivity() {
 
