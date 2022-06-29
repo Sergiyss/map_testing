@@ -1,10 +1,13 @@
 package com.example.maptesting.utils
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.view.View
 import android.view.animation.TranslateAnimation
+import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
+import androidx.fragment.app.Fragment
 import kotlinx.coroutines.*
 
 private var toast: Toast? = null
@@ -49,4 +52,15 @@ fun View.slideDown(duration: Int = 500) {
     animate.duration = duration.toLong()
     animate.fillAfter = true
     this.startAnimation(animate)
+}
+
+fun hideSoftKeyBoard(context: Context, view: View) {
+    try {
+        val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        imm?.hideSoftInputFromWindow(view.windowToken, InputMethodManager.HIDE_NOT_ALWAYS)
+    } catch (e: Exception) {
+        // TODO: handle exception
+        e.printStackTrace()
+    }
+
 }

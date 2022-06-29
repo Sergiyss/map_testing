@@ -1,40 +1,41 @@
 package com.example.maptesting
 
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
-
-import android.icu.text.CaseMap
-
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Color
+import android.graphics.Matrix
 import android.location.Geocoder
 import android.location.Location
 import android.location.LocationManager
 import android.os.Bundle
+import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
+import android.view.animation.Interpolator
+import android.view.animation.LinearInterpolator
 import android.widget.AdapterView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.ViewModelProvider
-
 import androidx.appcompat.widget.AppCompatAutoCompleteTextView
 import androidx.appcompat.widget.AppCompatTextView
+import androidx.lifecycle.ViewModelProvider
+import com.amalbit.trail.OverlayMarker
+import com.amalbit.trail.Route
+import com.amalbit.trail.RouteOverlayView
+import com.amalbit.trail.RouteOverlayView.RouteType
 import com.example.maptesting.adapters.PlaceArrayAdapter
-
 import com.example.maptesting.data.CarMarker
 import com.example.maptesting.data.PlaceDataModel
 import com.example.maptesting.databinding.ActivityMapsBinding
-
-import com.example.maptesting.google_map_util.MapAnimator
-import com.example.maptesting.network.Parser
-import com.example.maptesting.room_database.Car
-import com.example.maptesting.room_database.DBViewModel
-
 import com.example.maptesting.google_map_util.*
 import com.example.maptesting.retrofit.ApiClient
-
+import com.example.maptesting.room_database.Car
+import com.example.maptesting.room_database.DBViewModel
 import com.example.maptesting.utils.Coroutines
 import com.example.maptesting.utils.PermissionUtils
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -58,7 +59,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     GoogleMap.OnMyLocationClickListener,
     GoogleMap.OnCameraMoveCanceledListener,
     LocationSource.OnLocationChangedListener,
-    android.location.LocationListener  {
+    android.location.LocationListener {
 
     private lateinit var binding: ActivityMapsBinding
 
@@ -111,6 +112,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     private lateinit var carViewModel: DBViewModel
     private var car = Car()
 
+
+    private var mRouteOverlayView: RouteOverlayView? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -119,11 +123,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
         picTextView = binding.pickUpTextView
         autoCompleteEditText = binding.autoCompleteEditText
+        mRouteOverlayView = binding.mapOverlayView
 
 
         Places.initialize(this, getString(R.string.google_key))
         mPlacesClient = Places.createClient(this)
-
 
         placeAdapter = PlaceArrayAdapter(this, R.layout.layout_item_places, mPlacesClient)
         autoCompleteEditText.setAdapter(placeAdapter)
@@ -137,6 +141,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                 setSelection(autoCompleteEditText.length())
 
                 val lanlon = getLocationFromAddress(this@MapsActivity, place.fullText)
+
 
 
                 Coroutines.ioThenMain({
@@ -160,6 +165,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                 }
 
             }
+
         }
 
         //Получить местоположение клиента
@@ -172,6 +178,57 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         initDB()
 
     }
+
+
+
+    private var movingCabMarker: Marker? = null
+    private var previousLatLng: LatLng? = null
+
+    private fun moveCamera(latLng: LatLng) {
+        mMap!!.moveCamera(CameraUpdateFactory.newLatLng(latLng))
+    }
+
+    private fun animateCamera(latLng: LatLng) {
+        val cameraPosition = CameraPosition.Builder().target(latLng).zoom(15.5f).build()
+        mMap!!.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition))
+    }
+
+
+    private fun updateCarLocation(latLng: LatLng) {
+        if (movingCabMarker == null) {
+            movingCabMarker = arrMarker.get(0)
+        }
+        if (previousLatLng == null) {
+            currentLatLng = latLng
+            previousLatLng = currentLatLng
+            movingCabMarker?.position = currentLatLng!!
+            movingCabMarker?.setAnchor(0.5f, 0.5f)
+            animateCamera(currentLatLng!!)
+        } else {
+            previousLatLng = currentLatLng
+            currentLatLng = latLng
+            val valueAnimator = MapAnimator().carAnimator()
+            valueAnimator.addUpdateListener { va ->
+                if (currentLatLng != null && previousLatLng != null) {
+                    val multiplier = va.animatedFraction
+                    val nextLocation = LatLng(
+                        multiplier * currentLatLng!!.latitude + (1 - multiplier) * previousLatLng!!.latitude,
+                        multiplier * currentLatLng!!.longitude + (1 - multiplier) * previousLatLng!!.longitude
+                    )
+                    movingCabMarker?.position = nextLocation
+                    val rotation = MapAnimator().getRotation(previousLatLng!!, nextLocation)
+                    if (!rotation.isNaN()) {
+                        movingCabMarker?.rotation = rotation
+                    }
+                    movingCabMarker?.setAnchor(0.5f, 0.5f)
+                    animateCamera(nextLocation)
+                }
+            }
+            valueAnimator.start()
+        }
+    }
+
+
 
     //Инициализаяй БД
     private fun initDB(){
@@ -254,6 +311,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
         val latLong = LatLng(currentLocation?.latitude!!, currentLocation?.longitude!!)
         drawMarket(latLong)
+
+
+        googleMap.setOnCameraMoveListener {
+            mRouteOverlayView!!.onCameraMove(
+                googleMap.projection,
+                googleMap.cameraPosition
+            )
+        }
 
 
         mMap?.setOnMarkerDragListener(object : GoogleMap.OnMarkerDragListener{
@@ -362,10 +427,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
     }
 
-    //Определение ближайшего объекста
-    private fun getLocation(start : LatLng, end : LatLng){
-
-    }
 
     override fun onStart() {
         super.onStart()
@@ -458,13 +519,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         return carMarker
     }
 
-    private val arrMap : ArrayList<Marker> = arrayListOf()
+    private val arrMarker : ArrayList<Marker> = arrayListOf()
 
     private fun addNewMarker() {
 
         createMarker().forEach {
             Log.i("car", "${it.title} ${it.latLng} ${it.snippet}")
-            arrMap.add( mMap!!.addMarker(
+            arrMarker.add( mMap!!.addMarker(
                 MarkerOptions()
                     .position(it.latLng)
                     .title(it.title)
@@ -474,7 +535,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
             )
         }
         val distanceDetermination =  DistanceDetermination()
-        arrMap.forEach {
+        arrMarker.forEach {
             println("----- +++ "+
                     distanceDetermination.getDistanceInKilometers(
                         LatLng(currentLocation!!.latitude, currentLocation!!.longitude),
@@ -483,17 +544,25 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
     }
 
+    var point = 0
     private fun startAnimation() {
 
-        mMap?.animateCamera(
-            CameraUpdateFactory.newLatLngZoom(path.get(0), 16f),
-            5000,
-            MapAnimator().animateMarker(
-                mMap!!, -1,
-                path, 1000,
-                arrMap.get(0)
-            )
-        )
+        val a = object : CancelableCallback {
+
+            override fun onCancel() {
+
+            }
+
+            override fun onFinish() {
+                println("point " + point)
+                point++
+                startAnimation()
+            }
+        };
+
+//        CarMoveAnim().startcarAnimation(arrMarker.get(0),mMap!!,
+//            path.get(point), path.get(point+1),300, a);
+
     }
 
 
@@ -504,7 +573,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
      * Remove the currently selected marker.
      */
     fun removeSelectedMarker() {
-        this.arrMap.remove(this.selectedMarker)
+        this.arrMarker.remove(this.selectedMarker)
         this.selectedMarker!!.remove()
     }
 
@@ -549,7 +618,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         }
         println("------ sort ")
 
-        arrMap.forEach{
+        arrMarker.forEach{
             it.position
         }
     }
@@ -563,5 +632,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
     override fun onLocationChanged(p0: Location) {
         Toast.makeText(this, "new locale "+ p0.longitude, Toast.LENGTH_SHORT).show()
     }
+
 
 }

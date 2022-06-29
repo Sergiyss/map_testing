@@ -20,6 +20,8 @@ import com.google.android.libraries.places.api.model.TypeFilter
 import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest
 import com.google.android.libraries.places.api.net.PlacesClient
 import java.io.IOException
+import java.lang.Math.abs
+import java.lang.Math.atan
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
@@ -285,6 +287,7 @@ fun bounceMarker(googleMap: GoogleMap, marker: Marker) {
 
         println("bounceMarker "+ LatLng(lat, lng))
     }
+
 
 
 

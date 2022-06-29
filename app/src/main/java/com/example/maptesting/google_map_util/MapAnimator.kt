@@ -9,6 +9,7 @@ import android.graphics.Color
 import com.example.maptesting.google_map_util.RouteEvaluator
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.DecelerateInterpolator
+import android.view.animation.LinearInterpolator
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.*
 
@@ -123,48 +124,43 @@ class MapAnimator {
         firstRunAnimSet!!.start()
     }
 
-    /**
-     * This will be invoked by the ObjectAnimator multiple times. Mostly every 16ms.
-     */
-    fun setRouteIncreaseForward(endLatLng: LatLng) {
-        val foregroundPoints = foregroundPolyline!!.points
-        foregroundPoints.add(endLatLng)
-        foregroundPolyline!!.points = foregroundPoints
+
+
+
+    fun getRotation(start: LatLng, end: LatLng): Float {
+        val latDifference: Double = Math.abs(start.latitude - end.latitude)
+        val lngDifference: Double = Math.abs(start.longitude - end.longitude)
+        var rotation = -1F
+        when {
+            start.latitude < end.latitude && start.longitude < end.longitude -> {
+                println("1")
+                rotation = Math.toDegrees(Math.atan(lngDifference / latDifference)).toFloat() -80
+            }
+            start.latitude >= end.latitude && start.longitude < end.longitude -> {
+                println("2")
+                rotation = (90 - Math.toDegrees(Math.atan(lngDifference / latDifference)) + 90).toFloat()
+            }
+            start.latitude >= end.latitude && start.longitude >= end.longitude -> {
+                println("3")
+                rotation = (Math.toDegrees(Math.atan(lngDifference / latDifference)) + 180).toFloat()
+            }
+            start.latitude < end.latitude && start.longitude >= end.longitude -> {
+                println("4")
+                rotation =
+                    (90 - Math.toDegrees(Math.atan(lngDifference / latDifference)) + 270).toFloat()
+            }
+        }
+        return rotation
     }
 
 
 
-    fun animateMarker(mMap : GoogleMap,
-                      position : Int,
-                      allPaths : List<LatLng>,
-                      durationMs : Int,
-                      marker : Marker) : GoogleMap.CancelableCallback{
 
-        var currentPt = position
-
-        val simpleAnimationCancelableCallback: GoogleMap.CancelableCallback = object :
-            GoogleMap.CancelableCallback {
-            override fun onCancel() {}
-            override fun onFinish() {
-                if (++currentPt < allPaths.size) {
-
-                    val cameraPosition = CameraPosition.Builder()
-                        .target(allPaths.get(currentPt))
-                        .tilt(if (currentPt < allPaths.size - 1) 90f else 0f) //.bearing((float)heading)
-                        .zoom(mMap.getCameraPosition().zoom)
-                        .build()
-                    mMap.animateCamera(
-                        CameraUpdateFactory.newCameraPosition(cameraPosition),
-                        durationMs,
-                        this
-                    )
-
-                    marker.position = LatLng(cameraPosition.target.latitude, cameraPosition.target.longitude)
-                }
-            }
-        }
-
-        return simpleAnimationCancelableCallback
+    fun carAnimator(): ValueAnimator {
+        val valueAnimator = ValueAnimator.ofFloat(0f, 1f)
+        valueAnimator.duration = 3000
+        valueAnimator.interpolator = LinearInterpolator()
+        return valueAnimator
     }
 
 
