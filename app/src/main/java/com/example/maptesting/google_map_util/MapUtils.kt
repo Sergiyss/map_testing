@@ -2,13 +2,11 @@ package com.mindorks.example.ubercaranimation.util
 
 import android.content.Context
 import android.graphics.*
+import android.location.Address
 import android.location.Geocoder
 import android.location.Location
 import com.example.maptesting.R
-import com.example.maptesting.utils.Coroutines
 import com.google.android.gms.maps.model.LatLng
-import kotlinx.coroutines.Delay
-import kotlinx.coroutines.delay
 import java.util.*
 import kotlin.math.abs
 import kotlin.math.atan
@@ -68,6 +66,38 @@ object MapUtils {
         return "${addressess[0].getThoroughfare()}, ${addressess.get(0).getFeatureName()}"
     }
 
+    // Получение текущего адресса
+    fun getRegion(ctx : Context, lat : Double, lng : Double) : String?{
+        val local = Locale("uk_UA") // Список доступных городов https://stackoverflow.com/a/7989085/5722608
+        val geoCoder = Geocoder(ctx, local)
+        val region = geoCoder.getFromLocation(lat, lng, 1)
+//        println( region.get(0).describeContents())
+//        println( region.get(0).	getAdminArea())
+//        println( region.get(0).getCountryCode())
+//        println( region.get(0).getCountryName())
+//        println( region.get(0).getExtras())
+//        println( region.get(0).getFeatureName())
+//        println( region.get(0).getLatitude())
+//        println( region.get(0).getLocale())
+        println( region.get(0).getLocality())
+//        println( region.get(0).getLongitude())
+//        println( region.get(0).getMaxAddressLineIndex())
+//        println( region.get(0).getPhone())
+//        println( region.get(0).getPostalCode())
+//        println( region.get(0).getPremises())
+//        println( region.get(0).getSubAdminArea())
+//        println( region.get(0).getSubLocality())
+//        println( region.get(0).getSubThoroughfare())
+//        println( region.get(0).getThoroughfare())
+//        println( region.get(0).getUrl())
+
+
+
+
+        //https://developer.android.com/reference/android/location/Address.html
+        return region.get(0).subLocality
+    }
+
     //Определение рассторяния до маркера
     fun getDistanceMeters(startlatLong: LatLng, endlatLong: LatLng) : Float{
         val results = FloatArray(10)
@@ -103,6 +133,7 @@ object MapUtils {
     }
 
 
+    //??????
     fun getLocation(x0: Double, y0: Double, radius: Int) : LatLng {
         val random = Random()
 

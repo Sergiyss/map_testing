@@ -3,35 +3,15 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="wrap_content"
+    android:background="@color/quantum_white_100">
 
-    <fragment
-        android:id="@+id/map"
-        android:name="com.google.android.gms.maps.SupportMapFragment"
-        tools:context=".MapsActivity"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-
-    <com.amalbit.trail.RouteOverlayView
-        android:id="@+id/mapOverlayView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/pickUpDropLayout"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
-        android:layout_marginTop="108dp"
         android:layout_marginEnd="12dp"
         android:background="@android:color/white"
         app:layout_constraintEnd_toEndOf="parent"
@@ -96,7 +76,6 @@
             android:layout_marginStart="16dp"
             android:layout_marginTop="16dp"
             android:layout_marginEnd="16dp"
-            android:layout_marginBottom="16dp"
             android:background="@color/light_grey"
             android:ellipsize="end"
             android:hint="@string/where_to"
@@ -113,17 +92,5 @@
             app:layout_constraintStart_toEndOf="@+id/dropIndicator"
             app:layout_constraintTop_toBottomOf="@+id/pickUpTextView" />
 
-        <include
-            layout="@layout/autocomplete_gmaps_fragment"
-            android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:layout_marginStart="32dp"
-            android:layout_marginEnd="9dp"
-            app:layout_constraintEnd_toStartOf="@+id/autoCompleteEditText"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/autoCompleteEditText" />
     </androidx.constraintlayout.widget.ConstraintLayout>
-
-
-
 </androidx.constraintlayout.widget.ConstraintLayout>

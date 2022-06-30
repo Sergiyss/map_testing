@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_enabled="false">
+        <layer-list>
+            <item android:id="@android:id/background">
+                <shape android:shape="oval">
+                    <solid android:color="@color/quantum_black_100" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+
+    <item android:state_pressed="true">
+        <layer-list>
+            <item android:id="@android:id/background">
+                <shape android:shape="oval">
+                    <solid android:color="@color/colorPrimary" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+
+    <item>
+        <layer-list>
+            <item android:id="@android:id/background">
+                <shape android:shape="oval">
+                    <solid android:color="@color/quantum_white_100" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+</selector>

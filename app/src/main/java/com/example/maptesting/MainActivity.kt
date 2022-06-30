@@ -2,28 +2,34 @@ package com.example.maptesting
 
 import android.annotation.SuppressLint
 import android.app.Activity
-import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.location.Location
 import android.location.LocationManager
 import android.os.Bundle
 import android.os.Handler
 import android.util.Log
+import android.util.SparseArray
+import android.view.animation.Animation
+import android.view.animation.AnimationUtils.loadAnimation
 import android.widget.AdapterView
-import android.widget.Button
+import android.widget.ImageButton
 import android.widget.Toast
+import androidx.annotation.IdRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatAutoCompleteTextView
-import androidx.appcompat.widget.AppCompatTextView
+import androidx.fragment.app.Fragment
+import com.airbnb.lottie.LottieCompositionFactory.fromJson
 import com.example.maptesting.adapters.PlaceArrayAdapter
 import com.example.maptesting.data.CarMarker
 import com.example.maptesting.data.PlaceDataModel
+import com.example.maptesting.data.building_route.Geometry
+import com.example.maptesting.data.building_route.Polygons
 import com.example.maptesting.databinding.ActivityMainBinding
+import com.example.maptesting.fragments.DeliveryAddressSearchFragment
 import com.example.maptesting.google_map_util.*
 import com.example.maptesting.retrofit.ApiClient
-import com.example.maptesting.utils.Coroutines
-import com.example.maptesting.utils.PermissionUtils
-import com.example.maptesting.utils.hideSoftKeyBoard
+import com.example.maptesting.utils.*
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
@@ -31,6 +37,11 @@ import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.*
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.net.PlacesClient
+import com.google.gson.Gson
+import com.google.maps.android.PolyUtil
+import com.google.maps.android.data.geojson.GeoJsonFeature
+import com.google.maps.android.data.geojson.GeoJsonLayer
+import com.google.maps.android.data.geojson.GeoJsonLineString
 import com.mindorks.example.ubercaranimation.util.AnimationUtils
 import com.mindorks.example.ubercaranimation.util.AnimationUtils.zoomRoute
 import com.mindorks.example.ubercaranimation.util.MapUtils
@@ -38,8 +49,10 @@ import com.mindorks.example.ubercaranimation.util.MapUtils.getAddress
 import com.mindorks.example.ubercaranimation.util.MapUtils.getDistanceMeters
 import com.mindorks.example.ubercaranimation.util.MapUtils.getLocation
 import com.mindorks.example.ubercaranimation.util.MapUtils.getNearestMarker
+import com.mindorks.example.ubercaranimation.util.MapUtils.getRegion
 import kotlinx.coroutines.delay
-import kotlin.random.Random
+import org.json.JSONException
+import java.io.IOException
 
 
 class MainActivity : AppCompatActivity(),
@@ -48,9 +61,18 @@ class MainActivity : AppCompatActivity(),
     GoogleMap.OnMyLocationClickListener,
     GoogleMap.OnCameraMoveCanceledListener{
 
+    /**Fragment**/
+    private var savedStateSparseArray = SparseArray<Fragment.SavedState>()
+    private var currentSelectItemId = 1
+
     companion object{
         const val LOCATION_PERMISSION_REQUEST_CODE = 999
         const val DEFAULT_ZOOM = 15
+
+        //Сохраниение состояния Fragments
+        const val SAVED_STATE_CONTAINER_KEY = "ContainerKey"
+        const val SAVED_STATE_CURRENT_TAB_KEY = "CurrentTabKey"
+
     }
 
 
@@ -80,6 +102,7 @@ class MainActivity : AppCompatActivity(),
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var autoCompleteEditText : AppCompatAutoCompleteTextView
+    private lateinit var addNewMarker : ImageButton
 
 
     private val TAG = MapsActivity::class.java.name
@@ -94,6 +117,7 @@ class MainActivity : AppCompatActivity(),
         mPlacesClient = Places.createClient(this)
         placeAdapter = PlaceArrayAdapter(this, R.layout.layout_item_places, mPlacesClient)
         autoCompleteEditText = binding.autoCompleteEditText
+        addNewMarker = binding.addNewMarker
         autoCompleteEditText.setAdapter(placeAdapter)
         /* end */
         /* Сам поиск */
@@ -119,6 +143,18 @@ class MainActivity : AppCompatActivity(),
             }
         }
 
+        addNewMarker.setOnClickListener {
+            val showRouteSelection = binding.showRouteSelection
+            showRouteSelection.root.visibility = it.visibility
+
+            val slideUp: Animation = loadAnimation(this, R.anim.animate_slide_up_enter)
+            showRouteSelection.root.startAnimation(slideUp);
+
+            ///additionAdress()
+
+            swapFragments(1, "key", "red")
+        }
+
 
 
         binding.button3.setOnClickListener {
@@ -130,6 +166,18 @@ class MainActivity : AppCompatActivity(),
 
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
         setUpdateGoogleMap()
+    }
+
+
+    /**
+     * Вызываю фрагмент
+     * **/
+
+    private fun swapFragments(actionId: Int, key: String, color: String) {
+        if (supportFragmentManager.findFragmentByTag(key) == null) {
+            savedFragmentState(actionId)
+            createFragment(key, color, actionId)
+        }
     }
 
     /**
@@ -280,7 +328,7 @@ class MainActivity : AppCompatActivity(),
             .position(latLng)
             .title("I am heare")
             .draggable(true) //Чтобы маркер двигался
-        markerOption.icon(BitmapDescriptorFactory.fromResource(R.drawable.custom_marker))
+        markerOption.icon(BitmapDescriptorFactory.fromResource(R.drawable.current_marker))
 
         googleMap.animateCamera(CameraUpdateFactory.newLatLng(latLng))
         googleMap.uiSettings.isMapToolbarEnabled = false
@@ -298,16 +346,32 @@ class MainActivity : AppCompatActivity(),
         if(arrMarker.size == 0){
             addNewMarker()
         }
+        //Выделяю область
+        bordersColorMap()
+    }
 
-        //Рисую маршрут и анимирую ее здесь.
-       // drawRoute()
+    /*
+    *   Добавить дополнительный маркер. Для того чтобы клиент мог указать дополнительный адрес доставки
+    *   Маркер добавляю в центр окна, далее клиент перетаскивает нужный маркер на нужный адрес
+    * */
 
-        //Рисую маршрут
+    private fun additionAdress(){
+
+        val markerOption = MarkerOptions()
+            .position(googleMap.cameraPosition.target)
+            .title("I am heare")
+            .draggable(true) //Чтобы маркер двигался
+        markerOption.icon(BitmapDescriptorFactory.fromResource(R.drawable.marker_add))
+        currentMarker = googleMap.addMarker(markerOption)
+        currentMarker!!.showInfoWindow()
+
+
+        setUpdateGoogleMap()
     }
 
     /**
      * Рисую маршрут и анимирую его здесь
-     * Для теста задаю дефорлтные заначения
+     * Для теста задаю дефолтные значения
      * */
 
     private fun drawRoute(){
@@ -383,12 +447,10 @@ class MainActivity : AppCompatActivity(),
 
         for (i in 0..4) {
 
-            println("LOCATION _________________")
-
-            //for (i in 0..4) {
-                val latLngRnd =  getLocation(currentLocation!!.latitude, currentLocation!!.longitude, 12000)
-            //}
-            println("LOCATION _________________")
+            /**
+             * Чисто для теста. Ставим рандомно автомобиля в радиусе 12км
+             * */
+            val latLngRnd =  getLocation(currentLocation!!.latitude, currentLocation!!.longitude, 12000)
 
             carMarker.add(
                 CarMarker(
@@ -532,6 +594,79 @@ class MainActivity : AppCompatActivity(),
     }
 
 
+    //Выделение  активной области на карте
+    //https://stackoverflow.com/questions/41431384/highlight-whole-countries-in-google-maps-for-android
+    //https://nominatim.openstreetmap.org/ui/search.html
+    //convert json
+    //http://polygons.openstreetmap.fr/index.py
+    /**
+     * Чтобы добавить новую область в Json, нужно сделать так
+     *
+     * ]
+     *  ],
+     *  [
+     * [
+     *  [30.1595414, 50.5507233],
+     *  [30.179497, 50.5444823]
+     *  .....
+     * ]
+     *  ]
+     *
+     *    ]
+     *   }]
+     *  }
+     * */
+    private fun bordersColorMap(){
+
+        try {
+            val layer = GeoJsonLayer(googleMap, R.raw.borders_kyiv_region, applicationContext)
+            val style = layer.defaultPolygonStyle
+            style.fillColor = 0x12f3b70f
+            style.zIndex = 0.9f
+            style.strokeColor = Color.MAGENTA
+            style.strokeWidth = 1f
+            layer.addLayerToMap()
+        } catch (ex: IOException) {
+            Log.e("IOException", ex.getLocalizedMessage())
+        } catch (ex: JSONException) {
+            Log.e("JSONException", ex.localizedMessage)
+        }
+
+        println("--------------- ")
+        getUser(this)
+
+    }
+
+    private fun getUser(activity : Activity){
+
+        val geometry : Geometry
+      //  val json = mRead(getResources().openRawResource(R.raw.borders_kyiv_region));
+
+        println("0000000000 ---------- 00000000000")
+        val reg = getRegion(this@MainActivity,
+            currentLocation!!.latitude,
+            currentLocation!!.longitude)
+        println(reg)
+        println("0000000000 ---------- 00000000000")
+//        try {
+//            // convert json in an User object
+//            geometry = Gson().fromJson("", Geometry::class.java)
+//            println(geometry)
+//        }
+//        catch (e : Exception) {
+//            // we never know :)
+//            Log.e("error parsing", e.toString());
+//        }
+
+
+    }
+
+    private fun location2(){
+
+
+
+        //val isLocationOnPath = PolyUtil.isLocationOnPath(currentLocation, GeoJsonFeature(), true, tolerance)
+    }
 
     override fun onStart() {
         super.onStart()
@@ -586,6 +721,26 @@ class MainActivity : AppCompatActivity(),
     }
 
     override fun onCameraMoveCanceled() {
+    }
+
+
+
+    private fun createFragment(key: String, color: String, actionId: Int) {
+        val fragment = DeliveryAddressSearchFragment()
+        fragment.setInitialSavedState(savedStateSparseArray[actionId])
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.container_fragment, fragment, key)
+            .commit()
+    }
+
+    private fun savedFragmentState(actionId: Int) {
+        val currentFragment = supportFragmentManager.findFragmentById(R.id.container_fragment)
+        if (currentFragment != null) {
+            savedStateSparseArray.put(currentSelectItemId,
+                supportFragmentManager.saveFragmentInstanceState(currentFragment)
+            )
+        }
+        currentSelectItemId = actionId
     }
 
 }

@@ -7,8 +7,8 @@ import android.view.View
 import android.view.animation.TranslateAnimation
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
-import androidx.fragment.app.Fragment
 import kotlinx.coroutines.*
+import java.io.*
 
 private var toast: Toast? = null
 
@@ -62,5 +62,4 @@ fun hideSoftKeyBoard(context: Context, view: View) {
         // TODO: handle exception
         e.printStackTrace()
     }
-
 }
