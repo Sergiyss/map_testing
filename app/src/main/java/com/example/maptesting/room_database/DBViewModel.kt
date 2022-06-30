@@ -41,4 +41,10 @@ class DBViewModel(app: Application): AndroidViewModel(app) {
         return repository.getCarByTitle(title)
     }
 
+    fun updateCar(car: Car){
+        viewModelScope.launch(Dispatchers.IO){
+            repository.update(car)
+        }
+    }
+
 }

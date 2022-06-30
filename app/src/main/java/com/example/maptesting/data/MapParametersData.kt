@@ -53,8 +53,10 @@ import com.google.android.gms.maps.model.LatLng
 //    }
 
     //Data class for car markers
-    data class CarMarker(val latLng : LatLng,
+    data class CarMarker(var latLng : LatLng,
                          val title : String,
                          val snippet : String,
-                         val icon : Int)
+                         val icon : Int,
+                         var distance: Float
+    )
 

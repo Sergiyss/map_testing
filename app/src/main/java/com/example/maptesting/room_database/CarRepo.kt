@@ -25,4 +25,8 @@ class CarRepo(private val carDao: CarDao) {
         return carDao.getCarByTitle(title)
     }
 
+    suspend fun update(car: Car){
+        carDao.updateCar(car)
+    }
+
 }

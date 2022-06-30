@@ -24,10 +24,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatAutoCompleteTextView
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.lifecycle.ViewModelProvider
-import com.amalbit.trail.OverlayMarker
+/*import com.amalbit.trail.OverlayMarker
 import com.amalbit.trail.Route
 import com.amalbit.trail.RouteOverlayView
-import com.amalbit.trail.RouteOverlayView.RouteType
+import com.amalbit.trail.RouteOverlayView.RouteType*/
 import com.example.maptesting.adapters.PlaceArrayAdapter
 import com.example.maptesting.data.CarMarker
 import com.example.maptesting.data.PlaceDataModel
@@ -110,10 +110,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
     //ViewModel for cars
     private lateinit var carViewModel: DBViewModel
-    private var car = Car()
+    private val cars: ArrayList<Car> = arrayListOf()
 
 
-    private var mRouteOverlayView: RouteOverlayView? = null
+    //private var mRouteOverlayView: RouteOverlayView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -123,7 +123,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
         picTextView = binding.pickUpTextView
         autoCompleteEditText = binding.autoCompleteEditText
-        mRouteOverlayView = binding.mapOverlayView
+        //mRouteOverlayView = binding.mapOverlayView
 
 
         Places.initialize(this, getString(R.string.google_key))
@@ -179,7 +179,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
     }
 
-
+    override fun onResume() {
+        super.onResume()
+        /*if(getAllCars().size <= 0) {
+            addCarToDB()
+        }*/
+        updateCar()
+    }
 
     private var movingCabMarker: Marker? = null
     private var previousLatLng: LatLng? = null
@@ -237,22 +243,76 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         carViewModel.deleteAllCars()
     }
 
-    //Получение всех данных из БД
-    private fun getAllCars(){
-        carViewModel.getAllCars.observe(this){
-            it.forEach { car ->
-                Log.i("cars", car.title)
+    //Добавление машин в БД
+    private fun addCarToDB(){
+        for (i in 0..4) {
+            val latLngRnd = randomLatLng()
+
+            carViewModel.addCar(Car(
+                null,
+                "car$i",
+                "snippet$i",
+                R.drawable.ic_car,
+                latLngRnd.latitude,
+                latLngRnd.longitude,
+                0.0f
+            ))
+            Log.i("foreach", "car added $i")
+            //car = null
+            carViewModel.getCarByTitle("car$i").observe(this){
+                //Log.i("foreach", "car added ${it?.title}")
             }
         }
+    }
+
+    //Обновление данных в БД
+    private fun updateCar(){
+        getAllCars().forEach {
+            val latLngRnd = randomLatLng()
+            it.latitude = latLngRnd.latitude
+            it.longitude = latLngRnd.longitude
+            it.distance = setDistance(latLngRnd)
+            carViewModel.updateCar(
+                it
+            )
+        }
+    }
+
+    //Получение всех данных из БД
+    private fun getAllCars(): ArrayList<Car>{
+        val cars = arrayListOf<Car>()
+        Log.i("test", "start add")
+        carViewModel.getAllCars.observe(this){
+            println("size it ${it.size}")
+            it.forEach { car ->
+                cars.add(car)
+            }
+        }
+        cars.forEach {
+            Log.i("get", "received ${it.title}, ${it.distance} ${it.snippet}")
+        }
+
+        return cars
     }
 
     //Получение одного поля из БД
     private fun getCar(title: String){
         carViewModel.getCarByTitle(title).observe(this){
-            car = it ?: Car()
+            //car = it ?: Car()
         }
 
         //setUpdateGoogleMap()
+
+    }
+
+    //Поиск ближайшей машины
+    private fun getNearestCar(): Car {
+        val cars = getAllCars()
+
+        return cars.minByOrNull { car ->
+            car.title
+            car.distance
+        }!!
 
     }
 
@@ -314,10 +374,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
 
         googleMap.setOnCameraMoveListener {
-            mRouteOverlayView!!.onCameraMove(
+            /*mRouteOverlayView!!.onCameraMove(
                 googleMap.projection,
                 googleMap.cameraPosition
-            )
+            )*/
         }
 
 
@@ -347,18 +407,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
             override fun onMarkerClick(p0: Marker): Boolean {
 
 
-                //добавление в бд и вывод из бд
-                getAllCars()
-                if(car.title != "" && car.title == p0.title) {
-                    getCar(p0.title.toString())
-                    Log.i("car", "Title - ${car.title}, snippet - ${car.snippet}")
-                }
-                else {
-                    car.title = p0.title.toString()
-                    car.snippet = p0.snippet.toString()
-                    carViewModel.addCar(car)
-                    Log.i("car", "Added successfully")
-                }
+                //обновление в бд и поиск ближайшей машины
+                updateCar()
+                val nCar = getNearestCar()
+                Log.i("nearest", "${nCar.title} - ${nCar.distance}")
+                val dst = nCar.distance.toString().split('.')
+                Toast.makeText(baseContext,
+                    "${nCar.title} - ${dst[0]} km ${dst[1]} m", Toast.LENGTH_SHORT).show()
 
                 Log.i("click", "id - ${p0.id}, title - ${p0.title}, snippet - ${p0.snippet}, position - ${p0.position}")
                 println("marker "+p0.position)
@@ -450,6 +505,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                 }
             }
         }
+        if(getAllCars().size <= 0) {
+            addCarToDB()
+        }
     }
 
     override fun onRequestPermissionsResult(
@@ -480,18 +538,28 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
         return false
     }
 
-    private fun setDistance(latLong: LatLng) : String{
+    private fun setDistance(latLong: LatLng) : Float{
         val results = FloatArray(10)
 
         Location.distanceBetween(
-            LATITUDE,
-            LONGITUDE,
+            /*DEMO_LATITUDE,
+            DEMO_LONGITUDE,*/
+            currentLocation!!.latitude,
+            currentLocation!!.longitude,
             latLong.latitude,
             latLong.longitude,
             results
         )
 
-        return "Distance = ${String.format("%.1f", results[0] / 1000)} km"
+        //return "Distance = ${String.format("%.1f", results[0] / 1000)} km"
+        return getDistance(results[0] / 1000)
+    }
+
+    private fun randomLatLng(): LatLng{
+        return LatLng(
+            Random.nextDouble(48.4280261, 48.446958),
+            Random.nextDouble(35.000468, 35.0216886)
+        )
     }
 
     private fun createMarker() : ArrayList<CarMarker> {
@@ -506,15 +574,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
             saveAllLatLngRnd.add(latLngRnd)
 
-            carMarker.add(
+            /*carMarker.add(
                 CarMarker(
                     latLngRnd,
                     "car$i",
                     setDistance(latLngRnd),
                     R.drawable.ic_car
                 )
-
-            )
+            )*/
         }
         return carMarker
     }
@@ -523,7 +590,20 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
     private fun addNewMarker() {
 
-        createMarker().forEach {
+        mMap!!.clear()
+        drawMarket(LatLng(currentLocation!!.latitude, currentLocation!!.longitude))
+        getAllCars().forEach {
+            Log.i("car", "${it.title} ${LatLng(it.latitude, it.longitude)} ${it.snippet}")
+            arrMarker.add(mMap!!.addMarker(
+                MarkerOptions()
+                    .title(it.title)
+                    .snippet(it.snippet)
+                    .icon(BitmapDescriptorFactory.fromResource(it.icon))
+                    .position(LatLng(it.latitude, it.longitude))
+            )!!)
+        }
+
+        /*createMarker().forEach {
             Log.i("car", "${it.title} ${it.latLng} ${it.snippet}")
             arrMarker.add( mMap!!.addMarker(
                 MarkerOptions()
@@ -540,7 +620,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
                     distanceDetermination.getDistanceInKilometers(
                         LatLng(currentLocation!!.latitude, currentLocation!!.longitude),
                         it.position) / 1000)
-        }
+        }*/
 
     }
 
@@ -635,3 +715,5 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback,
 
 
 }
+
+fun getDistance(dist: Float) = String.format("%.3f", dist).replace(',','.').toFloat()

@@ -1,10 +1,7 @@
 package com.example.maptesting.room_database
 
 import androidx.lifecycle.LiveData
-import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.Query
+import androidx.room.*
 
 /*
 *
@@ -24,7 +21,7 @@ interface CarDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(vararg car: Car)
 
-    @Query("SELECT * FROM car")
+    @Query("SELECT * FROM car ORDER BY title ASC")
     fun getAllCars(): LiveData<List<Car>>
 
     @Query("DELETE FROM car")
@@ -32,5 +29,8 @@ interface CarDao {
 
     @Query("SELECT * FROM car WHERE title = :title")
     fun getCarByTitle(vararg title: String): LiveData<Car>
+
+    @Update
+    suspend fun updateCar(vararg car: Car)
 
 }

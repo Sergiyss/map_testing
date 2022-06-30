@@ -11,9 +11,9 @@ class OnboardingFinishActivity  : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_onboarding_finish)
-        btnStart = findViewById(R.id.btn_next_step)
+        /*btnStart = findViewById(R.id.btn_next_step)
         btnStart.setOnClickListener {
             finish()
-        }
+        }*/
     }
 }

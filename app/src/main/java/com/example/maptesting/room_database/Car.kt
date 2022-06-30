@@ -16,13 +16,13 @@ import com.google.android.gms.maps.model.LatLng
 
 
 @Entity(tableName = "car")
-class Car {
+data class Car(
     @PrimaryKey(autoGenerate = true)
-    var cid = 0
-
-    var title = ""
-
-    var snippet = ""
-
-    //var position = arrayOf(0.0, 0.0)
-}
+    val cid: Int? = 0,
+    val title: String,
+    val snippet: String,
+    val icon: Int,
+    var latitude: Double,
+    var longitude: Double,
+    var distance: Float
+)
